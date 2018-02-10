@@ -86,10 +86,10 @@ int _tmain(int argc, TCHAR* argv[]) {
 		LPCTSTR lpDll = argv[2];
 		int iPid = _ttoi(lpPid);
 		if (iPid) {
-			bRet = InjectDllWithProcessID(iPid, lpPid);
+			bRet = InjectDllWithProcessID(iPid, lpDll);
 		}
 		else {
-			bRet = InjectDllWithProcessName(lpPid, lpPid);
+			bRet = InjectDllWithProcessName(lpPid, lpDll);
 		}
 		if (!bRet) {
 			printf("inject error %d\n",GetLastError());

@@ -32,7 +32,7 @@ BOOL InjectDllToProcess(HANDLE hProcess, LPCTSTR lpDllPath){
 		Win32Throw(e, "CreateRemoteThread");
 	}
 
-	WaitForSingleObject(hNewRemoteThread, INFINITE);
+	WaitForSingleObject(hNewRemoteThread, 2000);
 	return TRUE;
 }
 
@@ -69,11 +69,12 @@ BOOL InjectDllWithProcessName(LPCTSTR lpName, LPCTSTR lpDllPath) {
 		}
 		if (_tcsicmp(lpExeName, lpName) == 0) {
 			printf("%d\n", psentry.th32ProcessID);
-			ret = ret && InjectDllWithProcessID(psentry.th32ProcessID, lpDllPath);
+			ret = InjectDllWithProcessID(psentry.th32ProcessID, lpDllPath);
 		}
 	} while (Process32Next(hProcessSnap, &psentry));
 
 	CloseHandle(hProcessSnap);
+	ret = TRUE;
 	return ret;
 }
 

@@ -10,7 +10,7 @@
 - utf8编码的fopen等函数  [ioutf8](https://github.com/churuxu/codesnippets/tree/master/ioutf8)
 - SM2签名的ASN1编码和解码  [sm2asn1](https://github.com/churuxu/codesnippets/tree/master/sm2asn1)
 - Windows窗口平铺工具  [tilewindow](https://github.com/churuxu/codesnippets/tree/master/tilewindow) 
-
+- 加密Sqlite  [sqlite3crypt](https://github.com/churuxu/codesnippets/tree/master/sqlite3crypt) 
 
 
 

@@ -11,6 +11,6 @@
 - SM2签名的ASN1编码和解码  [sm2asn1](https://github.com/churuxu/codesnippets/tree/master/sm2asn1)
 - Windows窗口平铺工具  [tilewindow](https://github.com/churuxu/codesnippets/tree/master/tilewindow) 
 - 加密Sqlite  [sqlite3crypt](https://github.com/churuxu/codesnippets/tree/master/sqlite3crypt) 
-
+- 文件夹添加右键菜单：在VSCode打开  [vscodeext](https://github.com/churuxu/codesnippets/tree/master/vscodeext) 
 
 

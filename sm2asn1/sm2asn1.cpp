@@ -39,9 +39,9 @@ int asn1_decode_sm2sig(const unsigned char* sig,unsigned int siglen,unsigned cha
     if(!ASN1_INTEGER_to_BN(sm2sig->r, bnr))goto error;
     if(!ASN1_INTEGER_to_BN(sm2sig->s, bns))goto error;
     
-    len1 = BN_bn2bin(bnr, buf);
+    len1 = BN_bn2binpad(bnr, buf, 32);
     if(len1!=32)goto error;
-    len2  = BN_bn2bin(bns, buf + len1);
+    len2  = BN_bn2binpad(bns, buf + len1, 32);
     if(len2!=32)goto error;
         
     if(sm2sig)SM2Signature_free(sm2sig);

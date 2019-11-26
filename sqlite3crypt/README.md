@@ -1,5 +1,4 @@
-
-# 实现sqlite加密接口
+# sqlite加密实现
 
 使用说明，将sqlite3crypt.c放在sqlite3.c同一目录，
 项目文件中使用sqlite3crypt.c来代替sqlite3.c进行编译

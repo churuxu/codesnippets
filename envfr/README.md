@@ -1,17 +1,19 @@
-���ڽ��ı��ļ��е� ${XXX} �滻�ɻ�������ʵ�ʵ�ֵ
+# 文本替换环境变量工具
+
+用于将文本文件中的 ${XXX} 替换成环境变量实际的值
 
 
-��������Ҫ������:  
-envfr.exe    ���ڴ�����ͨ�ı��ļ�
-envfrw.exe   ���ڴ���unicode������ı��ļ�
+编译结果需要有两个:  
+envfr.exe    用于处理普通文本文件
+envfrw.exe   用于处理unicode编码的文本文件
 
 
 
-����UNICODE�꣨vs��Ŀ����-����-ʹ��Unicode�ַ�����
-�������ļ���Ϊ envfrw.exe
+定义UNICODE宏（vs项目设置-常规-使用Unicode字符集）
+编译结果文件作为 envfrw.exe
 
-������UNICODE�꣨vs��Ŀ����-����-ʹ�ö��ֽ��ַ�����
-�������ļ���Ϊ envfr.exe
+不定义UNICODE宏（vs项目设置-常规-使用多字节字符集）
+编译结果文件作为 envfr.exe
 
 
 

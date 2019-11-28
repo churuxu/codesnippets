@@ -1,6 +1,6 @@
 # 一些代码片段、小工具等
 
- 
+- [buffer_stream](https://github.com/churuxu/codesnippets/tree/master/buffer_stream)  buffer输入输出流 
 - [CharacterImage](https://github.com/churuxu/codesnippets/tree/master/CharacterImage)  字符画 
 - [clipboard](https://github.com/churuxu/codesnippets/tree/master/clipboard)  简易剪切板查看器 
 - [dylibwrap](https://github.com/churuxu/codesnippets/tree/master/dylibwrap)  用于动态加载dll/so的包装类 

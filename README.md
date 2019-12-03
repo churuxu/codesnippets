@@ -1,16 +1,19 @@
 # 一些代码片段、小工具等
-
+ 
 - [buffer_stream](https://github.com/churuxu/codesnippets/tree/master/buffer_stream)  buffer输入输出流 
 - [CharacterImage](https://github.com/churuxu/codesnippets/tree/master/CharacterImage)  字符画 
 - [clipboard](https://github.com/churuxu/codesnippets/tree/master/clipboard)  简易剪切板查看器 
 - [dylibwrap](https://github.com/churuxu/codesnippets/tree/master/dylibwrap)  用于动态加载dll/so的包装类 
 - [envfr](https://github.com/churuxu/codesnippets/tree/master/envfr)  文本替换环境变量工具 
+- [fileutil](https://github.com/churuxu/codesnippets/tree/master/fileutil)  文件实用函数 
 - [hashexpr](https://github.com/churuxu/codesnippets/tree/master/hashexpr)  用于计算字符串hash的常量表达式 
+- [hex_codec](https://github.com/churuxu/codesnippets/tree/master/hex_codec)  十六进制编码解码 
 - [httpserver](https://github.com/churuxu/codesnippets/tree/master/httpserver)  简易http服务器 
 - [injectdll](https://github.com/churuxu/codesnippets/tree/master/injectdll)  DLL注入工具 
 - [io64](https://github.com/churuxu/codesnippets/tree/master/io64)  将fseek等api改为64位 
 - [ioutf8](https://github.com/churuxu/codesnippets/tree/master/ioutf8)  将windows下的io api改为utf8编码 
 - [jni-demo](https://github.com/churuxu/codesnippets/tree/master/jni-demo) JNI示例 
+- [mempool](https://github.com/churuxu/codesnippets/tree/master/mempool)  用于每次分配/释放固定大小的内存池 
 - [sm2asn1](https://github.com/churuxu/codesnippets/tree/master/sm2asn1)  SM2签名的ASN1编码和解码 
 - [sqlite3crypt](https://github.com/churuxu/codesnippets/tree/master/sqlite3crypt)  sqlite加密实现 
 - [sslserver](https://github.com/churuxu/codesnippets/tree/master/sslserver)  SSL服务端示例 

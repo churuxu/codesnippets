@@ -59,18 +59,7 @@ int task_scheduler_add(task_function func, task_context* ctx);
 
 void task_scheduler_cancel(task_context* ctx);
 
-
-#ifdef DOXYGEN
-
-#define task_enter(ctx) //进入任务代码块
-#define task_leave()  //退出任务代码块
-
-#define task_yield() //让出任务执行
-#define task_exit()  //退出任务
-#define task_wait(cond)  //等待条件，条件true则继续运行
-#define task_timed_wait(cond, ms)   //等待条件，条件true或超时，则继续运行，通过status判断是否超时
-#define task_sleep(ms)  //等待固定时间，之后继续运行
-#else
+#define task_is_finish(ctx) ((ctx)->status == TASK_STATUS_FINISH)
 
 //进入任务代码块
 #define task_enter(ctx) \
@@ -91,6 +80,7 @@ _TASK_LABLE:
 
  //退出任务
 #define task_exit() \
+    _current_task_->status = TASK_STATUS_FINISH;\
     _current_task_->pos = NULL; \
     return;\
 
@@ -120,7 +110,6 @@ _TASK_LABLE:
     task_timed_wait(0, ms);
 
 
-#endif
 
 #ifdef __cplusplus
 }

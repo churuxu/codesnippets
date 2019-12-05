@@ -3,12 +3,9 @@
 /**
 任务调度
 
-多任务并行运行
-1个大任务 = 无限运行多个小任务
-
-
-
 */
+
+
 #include <time.h>
 #include <stdlib.h>
 
@@ -17,24 +14,16 @@
 extern "C" {
 #endif
 
-typedef size_t co_pos_t;
-typedef clock_t task_time_t;
-
-#define CO_RESULT_OK     1
-#define CO_RESULT_YIELD  0
-
-#define _TASK_CONCAT2(s1, s2) s1##s2
-#define _TASK_CONCAT(s1, s2) _TASK_CONCAT2(s1, s2)
-#define _TASK_LABLE  _TASK_CONCAT(task_pos_, __LINE__)
-
-#define _TASK_POS_INIT(s) s = NULL
-#define _TASK_POS_SET(s) s = &&_TASK_LABLE; _TASK_LABLE:
-#define _TASK_POS_JMP(s) goto *s
 
 #define TASK_STATUS_YIELD   0
 #define TASK_STATUS_FINISH  1
 
 
+#define _TASK_CONCAT2(s1, s2) s1##s2
+#define _TASK_CONCAT(s1, s2) _TASK_CONCAT2(s1, s2)
+#define _TASK_LABLE  _TASK_CONCAT(task_pos_, __LINE__)
+
+//单个任务运行状态
 typedef struct task_context{
     void* pos;
     clock_t expire;
@@ -42,24 +31,42 @@ typedef struct task_context{
     int status;    
 }task_context;
 
+//任务调度器
+typedef struct task_scheduler task_scheduler;
+
+//时钟函数
 typedef clock_t (*task_clock_function)();
 
+//任务运行函数
 typedef void (*task_function)(task_context* ctx);
 
-
+//获取当前时钟
 clock_t task_scheduler_tick();
 
-int task_scheduler_init(task_clock_function clockfn);
+//设置时钟函数
+void task_scheduler_set_clock(task_clock_function clockfn);
 
-int task_scheduler_count();
+#define TASK_SCHEDULER_SIZE(maxtask) ((maxtask * sizeof(void*) * 2) + 32)
 
-int task_scheduler_exec();
+//将指定的内存初始化为调度器
+task_scheduler* task_scheduler_init(void* mem, int memsize);
 
-int task_scheduler_add(task_function func, task_context* ctx);
+//获取任务数量
+int task_scheduler_count(task_scheduler* s);
 
-void task_scheduler_cancel(task_context* ctx);
+//运行任务，返回到下一次运行的时间间隔
+int task_scheduler_exec(task_scheduler* s);
 
+//添加任务，成功返回0，任务已满则返回-1
+int task_scheduler_add(task_scheduler* s, task_function func, task_context* ctx);
+
+
+//任务是否已结束
 #define task_is_finish(ctx) ((ctx)->status == TASK_STATUS_FINISH)
+
+//取消任务
+#define task_cancel(ctx) (ctx)->status = TASK_STATUS_FINISH
+
 
 //进入任务代码块
 #define task_enter(ctx) \
@@ -96,7 +103,7 @@ _TASK_LABLE:
 #define task_timed_wait(cond, ms) \
     _current_task_->expire = task_scheduler_tick() + ms; \
     while(!(cond)){ \
-        task_time_t now = task_scheduler_tick(); \
+        clock_t now = task_scheduler_tick(); \
         _current_task_->delay = _current_task_->expire - now; \
         if(_current_task_->delay<=0){\
             _current_task_->delay = 0xfffff;\

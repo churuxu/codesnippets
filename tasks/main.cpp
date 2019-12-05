@@ -52,7 +52,11 @@ void test_task2(task_context* ctx){
 
 int main(){
     int delay = 0;
-    
+    task_scheduler* sched;
+    char mem[128];
+
+    task_scheduler_set_clock(clock);
+
     //自行调度任务函数
     int finish = 0;
     printf("user scheduler ...\n");
@@ -67,12 +71,14 @@ int main(){
 
     //托管调度任务函数
     printf("engine scheduler ...\n");
-    task_scheduler_add(test_task1, &ctx1_);
-    task_scheduler_add(test_task2, &ctx2_);
+    sched = task_scheduler_init(mem, 128);
+    task_scheduler_add(sched, test_task1, &ctx1_);
+    task_scheduler_add(sched, test_task2, &ctx2_);
 
-    while(task_scheduler_count()){
+    delay = 0;
+    while(task_scheduler_count(sched)){
         Sleep(delay);
-        delay = task_scheduler_exec();        
+        delay = task_scheduler_exec(sched);
     }
     return 0;
 }

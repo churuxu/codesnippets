@@ -9,25 +9,32 @@ typedef struct task_item{
     task_function func;
 }task_item;
 
-typedef struct task_scheduler{
+struct task_scheduler{
+    int max_count;
     int count;    
-    task_item tasks[MAX_TASKS];
-}task_scheduler;
+    task_item tasks[];
+};
 
 
-static task_scheduler sched_;
+static task_clock_function clock_;
 
+//获取当前时钟
 clock_t task_scheduler_tick(){
-    return clock();
+    if(!clock_)return 0;
+    return clock_();
 }
 
-int task_scheduler_count(){
-    task_scheduler* sched = &sched_;    
+//设置时钟函数
+void task_scheduler_set_clock(task_clock_function clockfn){
+    clock_ = clockfn;
+}
+
+
+int task_scheduler_count(task_scheduler* sched){       
     return sched->count;
 }
 
-static void remove_finish_task(){
-    task_scheduler* sched = &sched_;
+static void remove_finish_task(task_scheduler* sched){    
     int i;
     int count;
     i = 0;
@@ -48,11 +55,21 @@ static void remove_finish_task(){
     sched->count = count;
 }
 
-int task_scheduler_exec(){
+//初始化
+task_scheduler* task_scheduler_init(void* mem, int memsize){    
+    task_scheduler* sched;
+    if(memsize < (sizeof(task_scheduler) + sizeof(task_item)))return NULL;
+    sched = (task_scheduler*)mem;
+    sched->max_count = (memsize - sizeof(task_scheduler)) / sizeof(task_item);
+    sched->count = 0;
+    return sched;
+}
+
+
+int task_scheduler_exec(task_scheduler* sched){
     int i;
     int delay;
-    int count;
-    task_scheduler* sched = &sched_;
+    int count;    
     
     count = sched->count;
     delay = 100000;
@@ -64,29 +81,26 @@ int task_scheduler_exec(){
     }
     if(count != sched->count) delay = 0; //运行中，添加了任务
     if(delay<0)delay = 0;
-    remove_finish_task();
+    remove_finish_task(sched);
     return delay;
 }
 
-int task_scheduler_add(task_function func, task_context* ctx){    
-    int count;
-    task_scheduler* sched = &sched_;
+int task_scheduler_add(task_scheduler* sched, task_function func, task_context* ctx){    
+    int count;    
 
-    if(!func || !ctx)return -1;
+    if(!func || !ctx)return -2;
+    count = sched->count;    
+    if((count + 1) >= sched->max_count)return -1;
     ctx->delay = 0;
     ctx->expire = 0;
     ctx->pos = NULL;
     ctx->status = 0;
-    count = sched->count;    
-    if((count + 1) >= MAX_TASKS)return -2;
     sched->tasks[count].ctx = ctx;
     sched->tasks[count].func = func;
     sched->count = count + 1;
     return 0;
 }
 
-void task_scheduler_cancel(task_context* ctx){
-    
-}
+
 
 

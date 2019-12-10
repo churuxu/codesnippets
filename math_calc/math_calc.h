@@ -5,9 +5,9 @@
 
 
 /*
-数学表达式计算引擎
+数学表达式计算
 
-运算类型：+ - * / % << >>  | & ^ ~ ( )
+运算类型：+ - * / % << >>  | & ^ ( )
 
 数值类型：double int int64
 
@@ -28,14 +28,12 @@ extern "C" {
 #endif
 
 
-
-
-
+//数值类型
 #define UNUMBER_TYPE_DOUBLE 1
 #define UNUMBER_TYPE_INT    2
 #define UNUMBER_TYPE_INT64  3
 
-
+//数值
 typedef union {
     double val_double;
     int64_t val_int64;

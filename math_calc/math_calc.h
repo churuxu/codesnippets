@@ -39,7 +39,7 @@ extern "C" {
 typedef union {
     double val_double;
     int64_t val_int64;
-    int32_t val_int;
+    int val_int;
 }unumber;
 
 //变量获取函数，按变量名获取变量值，成功返回unumber类型，失败返回<0

@@ -1,8 +1,5 @@
 #include "tasks.h"
 
-#ifndef MAX_TASKS
-#define MAX_TASKS 64
-#endif
 
 typedef struct task_item{
     task_context* ctx;

@@ -7,18 +7,21 @@
 /*
 数学表达式计算
 
-运算类型：+ - * / % << >>  | & ^ ( )
 
-数值类型：double int int64
+运算符支持：+ - * / % << >>  | & ^ ( )
+
+数值类型支持：float double int int64
+
+数值示例： 1.0f  1.0  123  123L
 
 计算结果类型:
-double op int = double
-double op int64 = double
-double op double = double
-int64 op int64 = int64
-int op int64 = int64
+double op double/float/int/int64 = double
+float op float/int/int64 = float
+int64 op int/int64 = int64
 int op int = int
 
+支持变量:
+abc + a + 1
 
 */
 
@@ -29,15 +32,24 @@ extern "C" {
 
 
 //数值类型
-#define UNUMBER_TYPE_DOUBLE 1
-#define UNUMBER_TYPE_INT    2
-#define UNUMBER_TYPE_INT64  3
+#define UNUMBER_TYPE_INT    1  
+#define UNUMBER_TYPE_INT64  2 
+#define UNUMBER_TYPE_FLOAT  3
+#define UNUMBER_TYPE_DOUBLE 4
+
+
+// 1=int 1L=int64  1.0=double  1.0f=float
+
+//类型运算规则：有浮点数的，结果为浮点数；有更大的，结果取更大的；
+// int + float = float,  float + double = double
+
 
 //数值
 typedef union {
     double val_double;
+    float val_float;
     int64_t val_int64;
-    int val_int;
+    int val_int;    
 }unumber;
 
 //变量获取函数，按变量名获取变量值，成功返回unumber类型，失败返回<0

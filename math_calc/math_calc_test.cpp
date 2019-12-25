@@ -27,6 +27,9 @@ TEST(math_calc, parse_ok){
     type = unumber_parse(&num, "-123.45");
     EXPECT_EQ(type, UNUMBER_TYPE_DOUBLE);
     EXPECT_EQ(-123.45, num.val_double);
+    type = unumber_parse(&num, "123.0f");
+    EXPECT_EQ(type, UNUMBER_TYPE_FLOAT);
+    EXPECT_EQ(123.0f, num.val_float);
     type = unumber_parse(&num, "0");
     EXPECT_EQ(type, UNUMBER_TYPE_INT);
     EXPECT_EQ(0, num.val_int);
@@ -170,6 +173,9 @@ TEST(math_calc, calc_type){
     EXPECT_EQ(type, UNUMBER_TYPE_DOUBLE);
     EXPECT_EQ(3.0, num.val_double);
 
+    type = math_calc(&num, "1L + 2.0f", NULL);
+    EXPECT_EQ(type, UNUMBER_TYPE_FLOAT);
+    EXPECT_EQ(3.0f, num.val_float);
 }
 
 //特殊计算
@@ -249,7 +255,7 @@ static int get_var(unumber* result, const char* name){
 TEST(math_calc, calc_var){
     unumber num;
     int type;
-     
+
     set_var("a", "123");
     set_var("b", "234");
     set_var("ccc", "3");

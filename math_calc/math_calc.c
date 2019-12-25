@@ -65,24 +65,28 @@ int unumber_parse(unumber* result, const char* exp){
         return ERROR_NOT_NUMBER;
     }
 
-    if(isreal){ //实数
-        result->val_double = isnegative?(0.0-dval):dval;
-        if(end && end[0]){ //有后缀
-            if((end[0] != 'f' && end[0] != 'F') || end[1] != 0){
+    if(isreal){ //实数        
+        if(end && end[0]){ //有后缀 = float
+            if((end[0] != 'f' && end[0] != 'F') || end[1] != 0){ //错误后缀
                 result->val_int64 = 0;
                 return ERROR_NUMBER_FORMAT; 
-            }               
-        }
-        return UNUMBER_TYPE_DOUBLE;
+            }else{ //正确后缀
+                result->val_float = (float)(isnegative?(0.0-dval):dval);
+                return UNUMBER_TYPE_FLOAT;
+            }              
+        }else{ //没有后缀 = double
+            result->val_double = (isnegative?(0.0-dval):dval);
+            return UNUMBER_TYPE_DOUBLE;
+        }        
     }else{ //整数
-        if(end && end[0]){ //有后缀
+        if(end && end[0]){ //有后缀 = int64
             if((end[0] != 'L' && end[0] != 'l') || end[1] != 0){
                 result->val_int64 = 0;
                 return ERROR_NUMBER_FORMAT;                 
             }
             isi64 = 1;
         }
-        if(ival > (int64_t)INT32_MAX)isi64 = 1;
+        if(ival > (int64_t)INT32_MAX)isi64 = 1; //超过int最大大小也是 int64
         if(isi64){
             result->val_int64 = isnegative?(0-ival):ival;;
             return UNUMBER_TYPE_INT64;
@@ -91,6 +95,7 @@ int unumber_parse(unumber* result, const char* exp){
             return UNUMBER_TYPE_INT;
         }
     }
+    return ERROR_NUMBER_FORMAT;
 }
 
 
@@ -202,7 +207,7 @@ static int next_token(token_status* stat){
     }
 }
 
-
+//单次整数运算
 static int calc_int(int a, char opt, int b, int* result){
     switch (opt){
     case '/': if(!b)return -1; *result = a / b; return 0;
@@ -218,7 +223,7 @@ static int calc_int(int a, char opt, int b, int* result){
     default:return -1;
     }
 }
-
+//单次整数运算
 static int calc_int64(int64_t a, char opt, int64_t b, int64_t* result){
     switch (opt){    
     case '/': if(!b)return -1; *result = a / b; return 0;
@@ -234,7 +239,17 @@ static int calc_int64(int64_t a, char opt, int64_t b, int64_t* result){
     default:return -1;
     }
 }
-
+//单次浮点数运算
+static int calc_float(float a, char opt, float b, float* result){
+    switch (opt){
+    case '*': *result = a * b; return 0;
+    case '/': *result = a / b; return 0;    
+    case '+': *result = a + b; return 0;
+    case '-': *result = a - b; return 0;
+    default:return -1;
+    }
+}
+//单次浮点数运算
 static int calc_double(double a, char opt, double b, double* result){
     switch (opt){
     case '*': *result = a * b; return 0;
@@ -245,23 +260,42 @@ static int calc_double(double a, char opt, double b, double* result){
     }
 }
 
+//获取指定类型的值
+static float unumber_get_float(unumber* n, int type){
+    switch (type){
+    case UNUMBER_TYPE_FLOAT:return (float)n->val_float;
+    case UNUMBER_TYPE_DOUBLE:return (float)n->val_double;
+    case UNUMBER_TYPE_INT64:return (float)(n->val_int64);
+    case UNUMBER_TYPE_INT:return (float)(n->val_int);    
+    default:return 0.0f;
+    }
+}
 static double unumber_get_double(unumber* n, int type){
-    if(type == UNUMBER_TYPE_DOUBLE)return (double)n->val_double;
-    if(type == UNUMBER_TYPE_INT64)return (double)(n->val_int64);
-    if(type == UNUMBER_TYPE_INT)return (double)(n->val_int);
-    return 0;
+    switch (type){
+    case UNUMBER_TYPE_DOUBLE:return (double)n->val_double;
+    case UNUMBER_TYPE_FLOAT:return (double)n->val_float;
+    case UNUMBER_TYPE_INT64:return (double)(n->val_int64);
+    case UNUMBER_TYPE_INT:return (double)(n->val_int);    
+    default:return 0.0;
+    }
 }
 static int unumber_get_int(unumber* n, int type){
-    if(type == UNUMBER_TYPE_DOUBLE)return (int)n->val_double;
-    if(type == UNUMBER_TYPE_INT64)return (int)(n->val_int64);
-    if(type == UNUMBER_TYPE_INT)return (int)(n->val_int);
-    return 0;
+    switch (type){
+    case UNUMBER_TYPE_INT:return (int)(n->val_int);
+    case UNUMBER_TYPE_INT64:return (int)(n->val_int64);    
+    case UNUMBER_TYPE_FLOAT:return (int)n->val_float;
+    case UNUMBER_TYPE_DOUBLE:return (int)n->val_double;   
+    default:return 0;
+    }
 }
-static int unumber_get_int64(unumber* n, int type){
-    if(type == UNUMBER_TYPE_DOUBLE)return (int64_t)n->val_double;
-    if(type == UNUMBER_TYPE_INT64)return (int64_t)(n->val_int64);
-    if(type == UNUMBER_TYPE_INT)return (int64_t)(n->val_int);
-    return 0;
+static int64_t unumber_get_int64(unumber* n, int type){
+    switch (type){
+    case UNUMBER_TYPE_INT64:return (int64_t)(n->val_int64);
+    case UNUMBER_TYPE_INT:return (int64_t)(n->val_int);         
+    case UNUMBER_TYPE_FLOAT:return (int64_t)n->val_float;
+    case UNUMBER_TYPE_DOUBLE:return (int64_t)n->val_double;   
+    default:return 0;
+    }
 }
 
 //栈里取两个数和一个运算符，计算一次, 结果放回栈里
@@ -281,12 +315,19 @@ static int stack_calc_once(calc_stack* st){
     if(item1->isopt || item2->isopt || !op->isopt)return -1;
 
     if(item1->numtype == UNUMBER_TYPE_DOUBLE || item2->numtype == UNUMBER_TYPE_DOUBLE){
+        //任意一个操作数为double,则结果为double        
         resulttype = UNUMBER_TYPE_DOUBLE;
         ret = calc_double(unumber_get_double(&item1->num, item1->numtype), op->opt, unumber_get_double(&item2->num, item2->numtype), &result.val_double);
+    }else if(item1->numtype == UNUMBER_TYPE_FLOAT || item2->numtype == UNUMBER_TYPE_FLOAT){
+        //没有一个double,  任意一个操作数为float,则结果为float
+        resulttype = UNUMBER_TYPE_FLOAT;
+        ret = calc_float(unumber_get_float(&item1->num, item1->numtype), op->opt, unumber_get_float(&item2->num, item2->numtype), &result.val_float);
     }else if(item1->numtype == UNUMBER_TYPE_INT64 || item2->numtype == UNUMBER_TYPE_INT64){
+        //没有一个double/float,  任意一个操作数为int64, 则结果为int64
         resulttype = UNUMBER_TYPE_INT64;
         ret = calc_int64(unumber_get_int64(&item1->num, item1->numtype), op->opt, unumber_get_int64(&item2->num, item2->numtype), &result.val_int64);
     }else{
+        //都是int，则结果为int
         resulttype = UNUMBER_TYPE_INT;
         ret = calc_int(unumber_get_int(&item1->num, item1->numtype), op->opt, unumber_get_int(&item2->num, item2->numtype), &result.val_int);
     }
@@ -320,16 +361,12 @@ static int stack_push_token(calc_stack* st, token_status* stat, math_var_getter 
     return 0;
 }
 
+
+
 /*
-获取操作数
-获取操作符
-
-当前操作数
-
 如果当前运算符优先级最高，出栈，运算，结果入栈
 1 + 2 * 当前运算符优先级比前一个高，不计算
 1 * 2 +  当前运算符优先级比前一个低 或 相等， 计算
-( 1 + 2 * 3 )  当前运算符为 尾括号，计算
 
 */
 
@@ -428,6 +465,7 @@ int math_calc(unumber* result, const char* exp, math_var_getter func){
     if(st.count != 1)return -1; //结果数量不对
     switch (r->numtype){
     case UNUMBER_TYPE_DOUBLE: result->val_double = r->num.val_double; return UNUMBER_TYPE_DOUBLE;
+    case UNUMBER_TYPE_FLOAT: result->val_float = r->num.val_float; return UNUMBER_TYPE_FLOAT;
     case UNUMBER_TYPE_INT64: result->val_int64 = r->num.val_int64; return UNUMBER_TYPE_INT64;
     default: result->val_int = r->num.val_int; return UNUMBER_TYPE_INT;
     }

@@ -97,3 +97,28 @@ TEST(event_emitter, str){
     EXPECT_EQ(1, ctx3.count);
     EXPECT_EQ(5, ctx3.len);
 }
+
+
+
+//订阅多级
+TEST(event_emitter, multi){
+    uint8_t mem[256];
+    cb_ctx ctx1;
+    cb_ctx ctx2;
+    cb_ctx ctx3;
+    event_emitter* em = event_emitter_init(mem, 256, 16);
+
+    event_emitter_on(em, "a/#", on_signal, &ctx1);
+    event_emitter_on(em, "b/#", on_signal, &ctx2);
+    event_emitter_on(em, "b/2/#", on_data, &ctx3);
+
+    event_emitter_emit(em, "a/1");
+    event_emitter_emit_data(em, "b/2/3", NULL, 5);
+    event_emitter_emit(em, "b/1/3");
+    event_emitter_emit(em, "a/2");
+
+    EXPECT_EQ(2, ctx1.count);
+    EXPECT_EQ(2, ctx2.count);
+    EXPECT_EQ(1, ctx3.count);
+    EXPECT_EQ(5, ctx3.len);
+}

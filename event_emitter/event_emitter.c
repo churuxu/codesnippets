@@ -20,7 +20,7 @@ typedef struct id_listener{
 typedef struct name_listener{
     void* ctx;
     event_full_handler handler;
-    //char multi; //多级事件
+    char multi; //多级事件
     char name[];       
 }name_listener;
 
@@ -34,6 +34,16 @@ struct event_emitter{
     //listener memory
 };
 
+static int start_with(const char* str1, const char* str2){
+    while(1){        
+        if(!*str2)return 1;        
+        if(*str1 != *str2)return 0;
+        if(!*str1)return 0;
+        str1 ++;
+        str2 ++;
+    }
+    return 0;
+}
 
 static listener* get_listener(event_emitter* em, int index){
     uint8_t* mem = (uint8_t*)em;   
@@ -72,18 +82,28 @@ int event_emitter_emit(event_emitter* em, event_id_t name){
 int event_emitter_add_listener(event_emitter* em, event_id_t name, event_full_handler handler, void* ctx){
     if(em->count >= em->maxcount)return -1;
     if(!handler)return -2;
-    if(IS_BY_ID(em)){
+    if(IS_BY_ID(em)){ //按整数订阅
         id_listener* l = (id_listener*)get_listener(em, em->count);
         l->handler = handler;
         l->ctx = ctx;
         l->num = name;
         em->count ++;
         return 0;
-    }else{
+    }else{ //按字符串订阅
+        int len;
         name_listener* l = (name_listener*)get_listener(em, em->count);
+        len = strlen(name);
+        if(len >= em->maxname)return -1;
         l->handler = handler;
         l->ctx = ctx;
-        snprintf(l->name, em->maxname, "%s", name);
+        if(len > 2 && name[len-1] == '#' && name[len-2] == '/'){ //订阅多级
+            memcpy(l->name, name, len - 2);
+            l->name[len - 2] = 0;
+            l->multi = 1;
+        }else{ //订阅单级
+            memcpy(l->name, name, len + 1);
+            l->multi = 0;
+        }        
         em->count ++;
         return 0;
     }  
@@ -105,8 +125,14 @@ int event_emitter_emit_data(event_emitter* em, event_id_t name, void* data, int 
     }else{        
         for(i=0;i<em->count;i++){
             name_listener* l = (name_listener*)get_listener(em, i);
-            if(strcmp(l->name,name) == 0){
-                l->handler(l->ctx, data, len, name);
+            if(l->multi){
+                if(start_with(name, l->name)){
+                    l->handler(l->ctx, data, len, name);
+                }                
+            }else{
+                if(strcmp(l->name,name) == 0){
+                    l->handler(l->ctx, data, len, name);
+                }
             }
         }
     }

@@ -25,7 +25,7 @@ extern "C" {
 //事件ID （字符串）
 typedef const char* event_id_t;
 
-//使用整数作为事件ID (必须是1~0xffff之间)
+//使用整数作为事件ID 
 #define EVENT_ID(num) ((char*)(uintptr_t)(num))
 
 //事件回调函数

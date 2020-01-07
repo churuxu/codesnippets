@@ -106,8 +106,8 @@ void circle_file_close(circle_file* f){
 }
 
 
-//写数据
-int circle_file_write(circle_file* f, const void* data, int len){
+//写数据，不保存head
+static int circle_file_write_once(circle_file* f, const void* data, int len){
     size_t szret;    
     long pos = f->pos;
     long remain;
@@ -122,7 +122,6 @@ int circle_file_write(circle_file* f, const void* data, int len){
     }else{ // --end---------ptr--
         vremain = f->head.maxdata - pos + f->head.end;
     }
-
     
     if(remain >= len){ //物理文件结尾足够        
         szret = fwrite(data,  1, len, f->fp);
@@ -142,17 +141,53 @@ int circle_file_write(circle_file* f, const void* data, int len){
     }else{ //抽象结尾不够，结尾后移
         f->head.end = pos;
     }
-    fseek(f->fp, 0, SEEK_SET);
-    szret = fwrite(&(f->head),1,f->headsize,f->fp);
-    if(szret != f->headsize)return -3;    
-    f->pos = pos;
-    fseek(f->fp, pos + f->headsize, SEEK_SET);
+    f->pos = pos;   
     if(f->datasize < f->head.maxdata){
         f->datasize += len;
         if(f->datasize > f->head.maxdata)f->datasize = f->head.maxdata;
     }
+    return len;    
+}
+
+//写数据
+int circle_file_write(circle_file* f, const void* data, int len){
+    size_t szret;
+    int ret;
+    //写一次数据
+    ret = circle_file_write_once(f, data, len);
+    if(ret != len)return -1;
+    //保存head
+    fseek(f->fp, 0, SEEK_SET);
+    szret = fwrite(&(f->head),1,f->headsize,f->fp);
+    if(szret != f->headsize)return -3;
+    fseek(f->fp, f->pos + f->headsize, SEEK_SET);    
     return len;
 }
+
+
+
+//写数据(多个)
+int circle_file_multi_write(circle_file* f, circle_file_data* datas, int count){
+    size_t szret;
+    int ret;
+    int totallen = 0;
+    int i;
+    int len;
+    //写数据
+    for(i=0;i<count;i++){
+        len = datas[i].len;
+        ret = circle_file_write_once(f, datas[i].data, len);
+        if(ret != len)return -1;
+        totallen += len;
+    }
+    //保存head
+    fseek(f->fp, 0, SEEK_SET);
+    szret = fwrite(&(f->head),1,f->headsize,f->fp);
+    if(szret != f->headsize)return -3;
+    fseek(f->fp, f->pos + f->headsize, SEEK_SET);    
+    return totallen;
+}
+
 
 //读数据
 int circle_file_read(circle_file* f, void* buf, int buflen){
@@ -216,3 +251,4 @@ int circle_file_seek(circle_file* f, long pos, int where){
     f->pos = newpos;
     return fseek(f->fp, f->headsize + newpos, SEEK_SET);
 }
+

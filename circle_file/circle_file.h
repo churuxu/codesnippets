@@ -20,6 +20,11 @@ extern "C" {
 
 typedef struct circle_file circle_file;
 
+typedef struct circle_file_data{
+    const void* data;
+    int len;
+}circle_file_data;
+
 //打开文件  
 //读r  覆盖写w  覆盖读写w+ 追加读写a+  
 //maxsize指定文件最大不超过大小  
@@ -37,6 +42,8 @@ int circle_file_write(circle_file* f, const void* data, int len);
 //读数据
 int circle_file_read(circle_file* f, void* buf, int buflen);
 
+//写数据(多组数据)
+int circle_file_multi_write(circle_file* f, circle_file_data* datas, int count);
 
 #ifdef __cplusplus
 }

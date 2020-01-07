@@ -207,6 +207,43 @@ TEST(circle_file, test_aplus3){
 
 }
 
+
+TEST(circle_file, test_multi){
+    int ret;
+    char buf[32];
+    circle_file_data datas[3];
+    circle_file* f = circle_file_open("m.dat", "wb", 32);
+    ASSERT_TRUE(f);  
+    datas[0].data = "helloworld1";
+    datas[0].len = 11;
+    datas[1].data = "--";
+    datas[1].len = 2;
+    datas[2].data = "helloworld2";
+    datas[2].len = 11;
+    ret = circle_file_multi_write(f, datas, 3);    
+    EXPECT_TRUE(ret > 0);
+    circle_file_close(f);
+
+    f = circle_file_open("m.dat", "ab+", 32);
+    ASSERT_TRUE(f);   
+    datas[0].data = "helloworld3";
+    datas[2].data = "helloworld4";
+    ret = circle_file_multi_write(f, datas, 3);    
+    EXPECT_TRUE(ret > 0);
+
+    circle_file_seek(f, -22, SEEK_CUR);
+    ret = circle_file_read(f, buf, 11); 
+    EXPECT_EQ(11, ret);
+    EXPECT_TRUE(0 == memcmp(buf, "lloworld3--", 11));
+    ret = circle_file_read(f, buf, 11); 
+    EXPECT_EQ(11, ret);
+    EXPECT_TRUE(0 == memcmp(buf, "helloworld4", 11));
+
+    circle_file_close(f);
+
+}
+
+
 TEST(circle_file, test_clean){
     int ret = 0;
     ret = remove("1.dat");
@@ -217,6 +254,7 @@ TEST(circle_file, test_clean){
     ret = remove("w1.dat");
     ret = remove("w2.dat");
     ret = remove("w3.dat");
+    ret = remove("m.dat");
     (void)ret;
     //EXPECT_EQ(0, ret);
 }

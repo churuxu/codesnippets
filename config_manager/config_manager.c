@@ -2,12 +2,14 @@
 #include "json.h"
 #include <string.h>
 #include <stdio.h>
-
+#include "poll.h"
+#include "memory_helper.h"
 
 struct config{
-    json_value* json;
-    char num[16];
+    json_value json;    
 };
+
+static char tempbuf_[16];
 
 //加载文件
 static char* load_file(const char* file, size_t* psz) {
@@ -36,8 +38,7 @@ static char* load_file(const char* file, size_t* psz) {
 }
 
 //加载配置
-config* config_load(const char* name){
-    config* ret ;
+config* config_load(const char* name){    
     char * data;
     size_t sz;
     json_value* val;
@@ -50,20 +51,13 @@ config* config_load(const char* name){
         val = json_parse(data, sz);
         free(data);
     }    
-    if(!val)return NULL;
-    ret = (config* )malloc(sizeof(config));
-    if(!ret){
-        json_value_free(val);
-        return NULL;
-    }
-    ret->json = val;
-    ret->num[0] = 0;
-    return ret;
+    if(!val)return NULL;    
+    return (config*)val;
 }
 
 //释放配置
 void config_free(config* cfg){
-    if(cfg)free(cfg);
+    if(cfg)json_value_free((json_value*)cfg);
 }
 
 
@@ -122,37 +116,75 @@ json_value* json_find_value(json_value* json,  const char* key){
 
 
 //获取参数，字符串
-const char* config_get_string(config* cfg, const char* key){
+const char* config_get_string_default(config* cfg, const char* key, const char* defv){
     json_value* val;
-    if(!cfg || !key)return NULL;
-    val = json_find_value(cfg->json, key);
-    if(!val)return NULL;
+    if(!cfg || !key)return defv;
+    val = json_find_value((json_value*)cfg, key);
+    if(!val)return defv;
     if(val->type == json_string){
         return val->u.string.ptr;
     }
-    return NULL;
+    return defv;
 }
 
 //获取参数，整数
-int config_get_integer(config* cfg, const char* key){
+int config_get_integer_default(config* cfg, const char* key, int defv){
     json_value* val;
-    if(!cfg || !key)return 0;
-    val = json_find_value(cfg->json, key);
-    if(!val)return 0;
+    if(!cfg || !key)return defv;
+    val = json_find_value((json_value*)cfg, key);
+    if(!val)return defv;
     if(val->type == json_integer){
         return (int)val->u.integer;
+    }
+    return defv;
+}
+
+//获取参数，浮点数
+float config_get_float_default(config* cfg, const char* key, float defv){
+    json_value* val;
+    if(!cfg || !key)return defv;
+    val = json_find_value((json_value*)cfg, key);
+    if(!val)return defv;
+    if(val->type == json_double){
+        return (float)val->u.dbl;
+    }else if(val->type == json_integer){
+        return (float)val->u.integer;
+    }
+    return defv;
+}
+
+
+//获取子节点
+config* config_get_child(config* cfg, const char* key){
+    json_value* val;
+    if(!cfg || !key)return NULL;
+    val = json_find_value((json_value*)cfg, key);
+    if(!val)return NULL;    
+    return (config*)val;       
+}
+
+//获取子节点个数
+int config_count_child(config* cfg){
+    json_value* json;
+    if(!cfg )return 0;
+    json = ( json_value* )cfg;
+    if(json->type == json_object){  //object
+        return json->u.object.length;
+    }else if(json->type == json_array){ //array 
+        return json->u.array.length;
     }
     return 0;
 }
 
+
 //获取子key列表
-const char* config_enum_child(config* cfg, const char* parent, unsigned int index){
+const char* config_enum_child_key(config* cfg, const char* parent, unsigned int index){
     json_value* json;
     if(!cfg)return NULL;
     if(!parent || !(*parent)){
-        json = cfg->json;
+        json = (json_value*)cfg;
     }else{
-        json = json_find_value(cfg->json, parent);
+        json = json_find_value((json_value*)cfg, parent);
     }    
     if(!json)return NULL;
     if(json->type == json_object){  //object 直接返回 key
@@ -162,8 +194,8 @@ const char* config_enum_child(config* cfg, const char* parent, unsigned int inde
         return NULL;
     }else if(json->type == json_array){ //array 将索引转字符串再返回
         if(index < json->u.array.length){
-           snprintf(cfg->num, 16, "%u", index);
-           return cfg->num;
+           snprintf(tempbuf_, 16, "%u", index);
+           return tempbuf_;
         }
         return NULL;
     }

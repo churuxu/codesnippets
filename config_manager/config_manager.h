@@ -38,13 +38,26 @@ config* config_load(const char* data);
 void config_free(config* cfg);
 
 //获取字符串值
-const char* config_get_string(config* cfg, const char* key);
+const char* config_get_string_default(config* cfg, const char* key, const char* defv);
+#define config_get_string(cfg, key) config_get_string_default(cfg,key,NULL)
 
 //获取整数值
-int config_get_integer(config* cfg, const char* key);
+int config_get_integer_default(config* cfg, const char* key, int defv);
+#define config_get_integer(cfg, key) config_get_integer_default(cfg,key,0)
+
+//获取浮点数值
+float config_get_float_default(config* cfg, const char* key, float defv);
+#define config_get_float(cfg, key) config_get_float_default(cfg,key,0.0f)
+
+//获取子节点
+config* config_get_child(config* cfg, const char* key);
+
+//获取子节点个数
+int config_count_child(config* cfg);
+
 
 //获取子节点key
-const char* config_enum_child(config* cfg, const char* parent, unsigned int index);
+const char* config_enum_child_key(config* cfg, const char* parent, unsigned int index);
 
 #ifdef __cplusplus
 }

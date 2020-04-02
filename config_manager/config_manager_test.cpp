@@ -94,29 +94,29 @@ TEST(config_manager, child){
     EXPECT_TRUE(NULL != cfg);
     
     //遍历object
-    str = config_enum_child(cfg, "data/title", 0);
+    str = config_enum_child_key(cfg, "data/title", 0);
     EXPECT_TRUE(strcmp(str, "id") == 0 || strcmp(str, "name") == 0);
-    str = config_enum_child(cfg, "data/title", 1);
+    str = config_enum_child_key(cfg, "data/title", 1);
     EXPECT_TRUE(strcmp(str, "id") == 0 || strcmp(str, "name") == 0);
-    str = config_enum_child(cfg, "data/title", 2);
+    str = config_enum_child_key(cfg, "data/title", 2);
     EXPECT_TRUE(NULL == str);
 
     //遍历array
-    str = config_enum_child(cfg, "data/content", 0);
+    str = config_enum_child_key(cfg, "data/content", 0);
     EXPECT_TRUE(strcmp(str, "0") == 0 || strcmp(str, "1") == 0);
-    str = config_enum_child(cfg, "data/content", 1);
+    str = config_enum_child_key(cfg, "data/content", 1);
     EXPECT_TRUE(strcmp(str, "0") == 0 || strcmp(str, "1") == 0);
-    str = config_enum_child(cfg, "data/content", 2);
+    str = config_enum_child_key(cfg, "data/content", 2);
     EXPECT_TRUE(NULL == str);
 
     //遍历根节点
-    str = config_enum_child(cfg, "", 0);
+    str = config_enum_child_key(cfg, "", 0);
     EXPECT_TRUE(strcmp(str, "status") == 0 || strcmp(str, "message") == 0|| strcmp(str, "data") == 0);
-    str = config_enum_child(cfg, "", 1);
+    str = config_enum_child_key(cfg, "", 1);
     EXPECT_TRUE(strcmp(str, "status") == 0 || strcmp(str, "message") == 0|| strcmp(str, "data") == 0);
-    str = config_enum_child(cfg, NULL, 2);
+    str = config_enum_child_key(cfg, NULL, 2);
     EXPECT_TRUE(strcmp(str, "status") == 0 || strcmp(str, "message") == 0|| strcmp(str, "data") == 0);
-    str = config_enum_child(cfg, NULL, 3);
+    str = config_enum_child_key(cfg, NULL, 3);
     EXPECT_TRUE(NULL == str);    
 }
 

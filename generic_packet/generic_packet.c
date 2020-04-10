@@ -5,6 +5,27 @@
 #define MAX_NAME  32
 #define MAX_VALUE 32
 
+
+static const uint8_t BCD_TO_HEX[256] = {
+     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
+    10,11,12,13,14,15,16,17,18,19, 0, 0, 0, 0, 0, 0,
+    20,21,22,23,24,25,26,27,28,29, 0, 0, 0, 0, 0, 0,
+    30,31,32,33,34,35,36,37,38,39, 0, 0, 0, 0, 0, 0,
+    40,41,42,43,44,45,46,47,48,49, 0, 0, 0, 0, 0, 0,
+    50,51,52,53,54,55,56,57,58,59, 0, 0, 0, 0, 0, 0,
+    60,61,62,63,64,65,66,67,68,69, 0, 0, 0, 0, 0, 0,
+    70,71,72,73,74,75,76,77,78,79, 0, 0, 0, 0, 0, 0,
+    80,81,82,83,84,85,86,87,88,89, 0, 0, 0, 0, 0, 0,
+    90,91,92,93,94,95,96,97,98,99, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+
 //获取下一段字符串
 //"u8 u16 u16" 获取到 u8, 返回剩余字符串
 static const char* next_token(const char* str, char* value/*32*/, char* name/*32*/){       
@@ -148,6 +169,21 @@ static int convert_b_data(const char* fmt, uint8_t* buf, int buflen, packet_valu
     val->type = PACKET_VALUE_BINARY;
     return len;
 }
+//bcd码
+static int convert_bcd_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){
+    int len = atoi(fmt + 1);
+    int i;
+    uint8_t data;
+    packet_integer_t v = 0;
+    for(i=0;i<len;i++){
+        data = buf[i];        
+        v = v*100 + BCD_TO_HEX[data];
+    }
+    val->type = PACKET_VALUE_INTEGER;
+    val->len = 0;
+    val->int_val = v;
+    return len;
+}
 
 //D H开头，字符串形式数字
 static int convert_n_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){
@@ -195,7 +231,9 @@ static int convert_data(const char* fmt, uint8_t* buf, int buflen, packet_value*
         case 'H':
             return convert_n_data(fmt, buf, buflen, val); 
         case 'B':
-            return convert_b_data(fmt, buf, buflen, val);  
+            return convert_b_data(fmt, buf, buflen, val);
+        case 'C':
+            return convert_bcd_data(fmt, buf, buflen, val);            
         default:
             break;               
     }

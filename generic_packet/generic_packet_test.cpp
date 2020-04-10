@@ -68,6 +68,24 @@ TEST(generic_packet, str){
     EXPECT_EQ(0x0100, r_[7].pv.int_val);
 }
 
+TEST(generic_packet, bcd){
+    uint8_t pack[] = {0x01, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89, 0x90 };
+    int ret;
+    
+    i_ = 0;
+    ret = packet_parse("u8 $addr|C2 B3 $abc123|C4", pack, sizeof(pack), parser_callback, NULL);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(2, i_); //
+
+    EXPECT_STREQ("addr", r_[0].name); 
+    EXPECT_EQ(PACKET_VALUE_INTEGER, r_[0].pv.type);
+    EXPECT_EQ(1223, r_[0].pv.int_val);
+    EXPECT_STREQ("abc123", r_[1].name); 
+    EXPECT_EQ(PACKET_VALUE_INTEGER, r_[1].pv.type);
+    EXPECT_EQ(67788990, r_[1].pv.int_val);
+  
+}
+
 
 static int build_callback(void* udata, const char* name, packet_value* val){
     if(strcmp(name,"addr") == 0){

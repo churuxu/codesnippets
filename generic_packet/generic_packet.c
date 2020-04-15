@@ -80,25 +80,27 @@ static const char* next_token(const char* str, char* value/*32*/, char* name/*32
     return ptr;
 }
 
-//转换大小端函数
-static uint16_t reverse_u16(uint16_t value){  
-    return (value & 0x00FF) << 8 | (value & 0xFF00U) >> 8 ;  
+//用于转换大小端
+static void reverse_memcpy(void* dst, void* src, int len){
+    uint8_t* pdst = (uint8_t*)dst;
+    uint8_t* psrc = (uint8_t*)src;
+    int i;
+    for(i = 0; i<len; i++){
+        pdst[i] = psrc[len-1-i];        
+    }
 }
-static uint32_t reverse_u32(uint32_t value){  
-    return (value & 0x000000FFU) << 24 | (value & 0x0000FF00U) << 8 |   
-        (value & 0x00FF0000U) >> 8 | (value & 0xFF000000U) >> 24;   
-}
-static uint64_t reverse_u64(uint64_t value){  
-    uint64_t high_uint64 = (uint64_t)reverse_u32((uint32_t)(value));
-    uint64_t low_uint64 = (uint64_t)reverse_u32((uint32_t)(value >> 32)); 
-    return (high_uint64 << 32) + low_uint64;  
-} 
 
 
 //u\i开头，整数
 static int convert_int_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){
     int ret = -1;
     packet_integer_t v = 0;
+    uint16_t tempu16;
+    uint32_t tempu32;
+    uint64_t tempu64;
+    int16_t tempi16;
+    int32_t tempi32;
+    int64_t tempi64;    
     switch (fmt[0]){
     case 'u':
         switch (fmt[1]){
@@ -112,9 +114,9 @@ static int convert_int_data(const char* fmt, uint8_t* buf, int buflen, packet_va
     case 'U':
         switch (fmt[1]){
         case '8': v = *(uint8_t*)buf; ret = 1; break;
-        case '1': v = *(uint16_t*)buf; v = reverse_u16(v); ret = 2; break;
-        case '3': v = *(uint32_t*)buf; v = reverse_u32(v); ret = 4; break;
-        case '6': v = *(uint64_t*)buf; v = reverse_u64(v); ret = 8; break; 
+        case '1': reverse_memcpy(&tempu16, buf, 2); v = tempu16; ret = 2; break;
+        case '3': reverse_memcpy(&tempu32, buf, 4); v = tempu32; ret = 4; break;
+        case '6': reverse_memcpy(&tempu64, buf, 8); v = tempu64; ret = 8; break; 
         default:break;
         }
         break;
@@ -130,9 +132,9 @@ static int convert_int_data(const char* fmt, uint8_t* buf, int buflen, packet_va
     case 'I':
         switch (fmt[1]){
         case '8': v = *(int8_t*)buf; ret = 1; break;
-        case '1': v = *(int16_t*)buf; v = reverse_u16(v); ret = 2; break;
-        case '3': v = *(int32_t*)buf; v = reverse_u32(v); ret = 4; break;
-        case '6': v = *(int64_t*)buf; v = reverse_u64(v); ret = 8; break; 
+        case '1': reverse_memcpy(&tempi16, buf, 2); v = tempi16; ret = 2; break;
+        case '3': reverse_memcpy(&tempi32, buf, 4); v = tempi32;  ret = 4; break;
+        case '6': reverse_memcpy(&tempi64, buf, 8); v = tempi64;  ret = 8; break; 
         default:break;
         }
         break;        
@@ -149,11 +151,22 @@ static int convert_int_data(const char* fmt, uint8_t* buf, int buflen, packet_va
 static int convert_f_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){    
     int ret = -1;
     packet_number_t v = 0;
+    float f;
+    double d;
+    if(fmt[0] == 'f'){
     switch (fmt[1]){
         case '3': v = (packet_number_t)*(float*)buf; ret = 4; break;
         case '6': v = (packet_number_t)*(double*)buf; ret = 8; break;
         default:break;
-    }    
+    }
+    }else{
+    switch (fmt[1]){
+        case '3': reverse_memcpy(&f, buf, 4);  v = f; ret = 4; break;
+        case '6': reverse_memcpy(&d, buf, 8);  v = d; ret = 8; break;
+        default:break;
+    }
+    }
+    
     if(ret>0){
         val->type = PACKET_VALUE_NUMBER;
         val->len = 0;
@@ -226,6 +239,7 @@ static int convert_data(const char* fmt, uint8_t* buf, int buflen, packet_value*
         case 'I':
             return convert_int_data(fmt, buf, buflen, val);
         case 'f':
+        case 'F':
             return convert_f_data(fmt, buf, buflen, val);
         case 'D':
         case 'H':
@@ -270,6 +284,12 @@ int packet_parse(const char* format, void* buf, int buflen, packet_callback cb, 
 //写入整数数据
 static int write_int_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){
     packet_integer_t v;
+    uint16_t tempu16;
+    uint32_t tempu32;
+    uint64_t tempu64;
+    int16_t tempi16;
+    int32_t tempi32;
+    int64_t tempi64;
     if(val->type == PACKET_VALUE_INTEGER){
         v = val->int_val;
     }else if(val->type == PACKET_VALUE_NUMBER){
@@ -289,10 +309,10 @@ static int write_int_data(const char* fmt, uint8_t* buf, int buflen, packet_valu
         break;
     case 'U':
         switch (fmt[1]){
-        case '8': if(buflen<1)return -1; *(int8_t*)buf = (int8_t)v; return 1;
-        case '1': if(buflen<2)return -1; *(int16_t*)buf = reverse_u16((int16_t)v); return 2;
-        case '3': if(buflen<4)return -1; *(int32_t*)buf = reverse_u32((int32_t)v); return 4;
-        case '6': if(buflen<8)return -1; *(int64_t*)buf = reverse_u64((int64_t)v); return 8; 
+        case '8': if(buflen<1)return -1; *(uint8_t*)buf = (uint8_t)v; return 1;
+        case '1': if(buflen<2)return -1; tempu16 = (uint16_t)v; reverse_memcpy(buf, &tempu16, 2); return 2;
+        case '3': if(buflen<4)return -1; tempu32 = (uint32_t)v; reverse_memcpy(buf, &tempu32, 4); return 4;
+        case '6': if(buflen<8)return -1; tempu64 = (uint64_t)v; reverse_memcpy(buf, &tempu64, 8); return 8; 
         default:break;
         }
         break;
@@ -308,9 +328,9 @@ static int write_int_data(const char* fmt, uint8_t* buf, int buflen, packet_valu
     case 'I':
         switch (fmt[1]){
         case '8': if(buflen<1)return -1; *(int8_t*)buf = (int8_t)v; return 1;
-        case '1': if(buflen<2)return -1; *(int16_t*)buf = reverse_u16((int16_t)v); return 2;
-        case '3': if(buflen<4)return -1; *(int32_t*)buf = reverse_u32((int32_t)v); return 4;
-        case '6': if(buflen<8)return -1; *(int64_t*)buf = reverse_u64((int64_t)v); return 8; 
+        case '1': if(buflen<2)return -1; tempi16 = (int16_t)v; reverse_memcpy(buf, &tempi16, 2); return 2;
+        case '3': if(buflen<4)return -1; tempi32 = (int32_t)v; reverse_memcpy(buf, &tempi32, 4); return 4;
+        case '6': if(buflen<8)return -1; tempi64 = (int64_t)v; reverse_memcpy(buf, &tempi64, 8); return 8; 
         default:break;
         }
         break;        
@@ -322,6 +342,8 @@ static int write_int_data(const char* fmt, uint8_t* buf, int buflen, packet_valu
 //写入实数数据
 static int write_f_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){
     packet_number_t v;
+    float f;
+    double d;
     if(val->type == PACKET_VALUE_INTEGER){
         v = (packet_number_t)val->int_val;
     }else if(val->type == PACKET_VALUE_NUMBER){
@@ -329,14 +351,31 @@ static int write_f_data(const char* fmt, uint8_t* buf, int buflen, packet_value*
     }else{
         return -1;
     }
-    switch (fmt[1]){
-        case '3': if(buflen<4)return -1; *(float*)buf = (float)v; return 4;
-        case '6': if(buflen<8)return -1; *(double*)buf = (double)v; return 8;
-        default:break;
-    }
+    if(fmt[1] == 'f'){
+        switch (fmt[1]){
+            case '3': if(buflen<4)return -1; *(float*)buf = (float)v; return 4;
+            case '6': if(buflen<8)return -1; *(double*)buf = (double)v; return 8;
+            default:break;
+        }
+    }else{
+        switch (fmt[1]){
+            case '3': if(buflen<4)return -1; f = (float)v; reverse_memcpy(buf, &f, 4); return 4;
+            case '6': if(buflen<8)return -1; d = (double)v; reverse_memcpy(buf, &d, 8);return 8;
+            default:break;
+        }
+    }    
     return -1;       
 }
-
+//写入二进制数据
+static int write_bin_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){
+    //packet_number_t v;
+    if(val->type != PACKET_VALUE_BINARY){
+        return -1;
+    }
+    if(buflen <= val->len)return -1;
+    memcpy(buf, val->bin_val, val->len);
+    return val->len;       
+}
 //写入字符串形式整数
 static int write_n_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){
     packet_integer_t v = 0;
@@ -379,10 +418,13 @@ static int write_data(const char* fmt, uint8_t* buf, int buflen, packet_value* v
         case 'I':
             return write_int_data(fmt, buf, buflen, val);
         case 'f':
+        case 'F':
             return write_f_data(fmt, buf, buflen, val);  
         case 'D':
         case 'H':
-            return write_n_data(fmt, buf, buflen, val);                  
+            return write_n_data(fmt, buf, buflen, val);
+        case 'B':
+            return write_bin_data(fmt, buf, buflen, val);                                
         default:
             break;               
     }

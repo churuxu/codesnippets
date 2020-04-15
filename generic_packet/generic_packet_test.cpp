@@ -87,6 +87,23 @@ TEST(generic_packet, bcd){
 }
 
 
+
+TEST(generic_packet, fbe){
+    uint8_t pack[] = {0x45, 0x7A, 0x20, 0x00 };
+    int ret;
+    
+    i_ = 0;
+    ret = packet_parse("$v|F32", pack, sizeof(pack), parser_callback, NULL);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(1, i_); //
+
+    EXPECT_STREQ("v", r_[0].name); 
+    EXPECT_EQ(PACKET_VALUE_NUMBER, r_[0].pv.type);
+    EXPECT_TRUE(r_[0].pv.num_val > 3900.0 && r_[0].pv.num_val < 4100.0);    
+  
+}
+
+
 static int build_callback(void* udata, const char* name, packet_value* val){
     if(strcmp(name,"addr") == 0){
         val->int_val = 123;

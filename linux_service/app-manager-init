@@ -1,0 +1,96 @@
+#!/bin/bash
+
+#初始化app manager
+
+
+
+
+#生成服务脚本注释 (文件名 名称)
+create_service_header(){
+	FNAME=$1
+	NAME=$2
+	
+	echo "#!/bin/bash" > $FNAME
+	echo "#" >> $FNAME
+	
+    CNT=$(which chkconfig 2>/dev/null | wc -l)
+    if [ $CNT -ne 0 ]; then 
+        #rh 系列的Linux
+        echo "# chkconfig: - 80 40" >> $FNAME
+		echo "# description: generic service" >> $FNAME
+    fi
+    CNT=$(which update-rc.d 2>/dev/null | wc -l)
+    if [ $CNT -ne 0 ]; then 
+        #debian 系列的Linux
+        echo "### BEGIN INIT INFO" >> $FNAME
+        echo "# Provides:          ${NAME}" >> $FNAME
+        echo "# Required-Start:    \$local_fs \$network" >> $FNAME
+        echo "# Required-Stop:     \$local_fs" >> $FNAME
+        echo "# Default-Start:     2 3 4 5" >> $FNAME
+        echo "# Default-Stop:      0 1 6" >> $FNAME
+        echo "# Description:       generic service" >> $FNAME
+        echo "### END INIT INFO"  >> $FNAME   
+    fi	
+	echo "#" >> $FNAME	
+}
+
+echo "Init app manager ..."
+THIS_DIR=$(cd $(dirname $0);pwd)
+
+#文件授权
+chmod +x ${THIS_DIR}/appm
+chmod +x ${THIS_DIR}/app-watcher
+
+#添加PATH变量
+#echo "export PATH=\${PATH}:${THIS_DIR}" > /etc/profile.d/app-manager.sh
+#chmod +x /etc/profile.d/app-manager.sh
+#CNT=$(echo ${PATH} | grep ${THIS_DIR} | wc -l)
+#if [ $CNT -eq 0 ]; then
+#	export PATH=${PATH}:${THIS_DIR}
+#fi
+ln -sf ${THIS_DIR}/appm /usr/bin/appm
+ln -sf ${THIS_DIR}/app-service.tpl /usr/bin/app-service.tpl
+
+
+#安装app-watcher服务
+NAME=app-watcher   
+echo "Create app-watcher service ..."
+SERV_FILE=/etc/init.d/${NAME}
+CNT=$(ls /etc/init.d/S??* 2>/dev/null | wc -l)
+if [ $CNT -gt 10 ]; then
+    SERV_FILE=/etc/init.d/S91${NAME} #buildroot启动脚本为 S**开头
+fi
+create_service_header ${SERV_FILE} ${NAME} 
+echo "BINARY_DIR=${THIS_DIR}" >> ${SERV_FILE}
+echo "NAME=${NAME}" >> ${SERV_FILE}
+echo "BINARY=${NAME}" >> ${SERV_FILE}
+echo "ARGS=" >> ${SERV_FILE}
+echo "BOOTSTRAP=" >> ${SERV_FILE}
+cat ${THIS_DIR}/app-service.tpl >> ${SERV_FILE} 
+chmod +x ${SERV_FILE}
+
+
+
+#注册成系统服务    
+echo "Register service ..." 
+
+CNT=$(which chkconfig 2>/dev/null | wc -l)
+if [ $CNT -ne 0 ]; then 
+    #rh 系列的Linux
+    echo "Register for RH Linux ..."
+    chkconfig --add ${NAME} 
+	service app-watcher start
+	exit $?
+fi
+
+CNT=$(which update-rc.d 2>/dev/null | wc -l)
+if [ $CNT -ne 0 ]; then 
+    #debian 系列的Linux
+    echo "Register for Debian Linux ..."
+    update-rc.d ${NAME} defaults 
+    service app-watcher start
+	exit $?
+fi
+
+${SERV_FILE} start
+

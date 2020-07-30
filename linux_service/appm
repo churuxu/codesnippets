@@ -1,0 +1,409 @@
+#!/bin/bash
+# 
+
+#应用管理工具
+#支持安装卸载启动停止等
+
+
+#服务控制 (命令 服务名)
+service_control(){
+    CTL=$1
+    NAME=$2 
+	if [ "${NAME}" = "" ]; then
+		echo "Usage: appm ${CTL} <name>"
+		return 1
+	fi
+	if [ ! -f /etc/app.d/${NAME}.info ]; then
+		echo "app ${NAME} not found"
+		return 1
+	fi	
+	. /etc/app.d/${NAME}.info
+	if [ ! "${TYPE}" = "SERVICE" ]; then
+		echo "app ${NAME} is not service"
+		return 1
+	fi
+		
+    CNT=$(which service 2>/dev/null | wc -l)
+    if [ $CNT -ne 0 ]; then #有service命令 
+        service ${NAME} ${CTL}
+        return $?
+    else #无service命令
+        SERVICE_PREFIX=
+        CNT=$(ls /etc/init.d/S??* 2>/dev/null | wc -l)
+        if [ $CNT -gt 10 ]; then        
+            SERVICE_PREFIX=S91 #buildroot启动脚本为 S**开头
+        fi
+        /etc/init.d/${SERVICE_PREFIX}${NAME} ${CTL}
+        return $?
+    fi  
+}
+
+#验证名称是否有效 (名称)
+verify_name(){
+    if [ ! "$2" = "" ]; then
+        echo "NAME contains space"
+        return 1
+    fi
+    if [ "$1" = "" ]; then
+        echo "NAME is empty"
+        return 1
+    fi  
+    return 0
+}
+
+#应用是否在运行 (名称)
+check_app_running(){
+	NAME=$1
+	APP_PATH=/usr/local/app/${NAME}
+	PID_FILE=/var/run/${NAME}.pid
+	if [ -f ${PID_FILE} ]; then
+		PID=$(cat ${PID_FILE})
+		if [ -d /proc/${PID} ]; then
+			CNT=$(cat /proc/${PID}/cmdline | grep ${APP_PATH} | wc -l)
+			if [ ! $CNT -eq 0 ]; then				
+				return 0 #在运行
+			fi        
+		fi
+    fi
+	return 1
+}
+
+
+#生成服务脚本注释 (文件名 名称)
+create_service_header(){
+	FNAME=$1
+	NAME=$2
+	
+	echo "#!/bin/bash" > $FNAME
+	echo "#" >> $FNAME
+	
+    CNT=$(which chkconfig 2>/dev/null | wc -l)
+    if [ $CNT -ne 0 ]; then 
+        #rh 系列的Linux
+        echo "# chkconfig: - 80 40" >> $FNAME
+		echo "# description: generic service" >> $FNAME
+    fi
+    CNT=$(which update-rc.d 2>/dev/null | wc -l)
+    if [ $CNT -ne 0 ]; then 
+        #debian 系列的Linux
+        echo "### BEGIN INIT INFO" >> $FNAME
+        echo "# Provides:          ${NAME}" >> $FNAME
+        echo "# Required-Start:    \$local_fs \$network" >> $FNAME
+        echo "# Required-Stop:     \$local_fs" >> $FNAME
+        echo "# Default-Start:     2 3 4 5" >> $FNAME
+        echo "# Default-Stop:      0 1 6" >> $FNAME
+        echo "# Description:       generic service" >> $FNAME
+        echo "### END INIT INFO"  >> $FNAME   
+    fi	
+	echo "#" >> $FNAME	
+}
+
+
+
+#安装
+install(){
+    echo "Install $1 ..."
+    
+    #读取应用信息
+    echo "Read app info ..."
+    unzip -o $1 app.info -d /tmp || return 1
+	INFO=$(cat /tmp/app.info | tr "\r" " ")	
+    echo "${INFO}" > /tmp/app.info
+    chmod +x /tmp/app.info
+	. /tmp/app.info
+	
+    #验证应用信息
+    echo "Verify app info ..."
+    verify_name ${NAME}
+    if [ $? -ne 0 ]; then
+        echo "Invalid app info"
+        return 1
+    fi  
+    
+	
+    #停止服务
+	if [ "${TYPE}" = "SERVICE" ]; then
+		if [ -f /etc/app.d/${NAME}.info ]; then
+			echo "Stop service ..."
+			service_control stop ${NAME}  
+			. /tmp/app.info
+		fi   
+    fi
+	
+	#创建应用目录和数据目录
+    echo "Create directory ..."
+    [ ! -d /usr/local/app ] && mkdir /usr/local/app
+    [ ! -d /usr/local/app/${NAME} ] && mkdir /usr/local/app/${NAME}	
+    [ ! -d /usr/local/app_data ] && mkdir /usr/local/app_data
+    [ ! -d /usr/local/app_data/${NAME} ] && mkdir /usr/local/app_data/${NAME}		
+	
+	[ ! -d /usr/local/app/${NAME} ] && return 1
+	[ ! -d /usr/local/app_data/${NAME} ] && return 1
+	
+    #解压文件
+    echo "Extract ..."   
+    unzip -o $1 -d /usr/local/app/${NAME} || return 1   
+    echo "${INFO}" > /usr/local/app/${NAME}/app.info
+    	
+	#执行初始化脚本
+	if [ -f /usr/local/app/${NAME}/setup.sh ]; then
+		echo "Run setup script ..."
+		chmod +x /usr/local/app/${NAME}/setup.sh
+		/usr/local/app/${NAME}/setup.sh  || return 1		
+	fi
+	
+    #拷贝版本信息文件
+    echo "Link info file ..."
+    [ ! -d /etc/app.d ] && mkdir /etc/app.d	
+    ln -sf /usr/local/app/${NAME}/app.info /etc/app.d/${NAME}.info || return 1
+    chmod +x /etc/app.d/${NAME}.info
+	
+	
+	if [ ! "${TYPE}" = "SERVICE" ]; then
+		#非服务应用
+		echo "OK"
+		return 0
+	fi
+	
+	
+    #拷贝服务脚本 
+    echo "Create service file ..."
+    SERV_FILE=/etc/init.d/${NAME}
+    CNT=$(ls /etc/init.d/S??* 2>/dev/null | wc -l)
+    if [ $CNT -gt 10 ]; then
+        SERV_FILE=/etc/init.d/S91${NAME} #buildroot启动脚本为 S**开头
+    fi
+	create_service_header ${SERV_FILE} ${NAME}
+	echo ". /etc/app.d/${NAME}.info" >> ${SERV_FILE}
+	echo "BINARY_DIR=/usr/local/app/${NAME}" >> ${SERV_FILE}
+	echo "WORK_DIR=/usr/local/app_data/${NAME}" >> ${SERV_FILE}
+	
+	BASE_DIR=$(dirname $0)
+    cat ${BASE_DIR}/app-service.tpl >> ${SERV_FILE} || return 1
+    chmod +x ${SERV_FILE}
+    
+    #注册成系统服务    
+    echo "Register service ..." 
+    CNT=$(which chkconfig 2>/dev/null | wc -l)
+    if [ $CNT -ne 0 ]; then 
+        #rh 系列的Linux
+        echo "Register for RH Linux ..."
+        chkconfig --add ${NAME} || return 1 
+    fi
+    CNT=$(which update-rc.d 2>/dev/null | wc -l)
+    if [ $CNT -ne 0 ]; then 
+        #debian 系列的Linux
+        echo "Register for Debian Linux ..."
+        update-rc.d ${NAME} defaults || return 1    
+    fi  
+    
+    #启动服务
+    echo "Start service ..."
+    service_control start ${NAME}
+    return $?   
+}
+
+
+#卸载软件
+remove(){
+    NAME=$1 
+    if [ ${NAME} = "" ]; then
+        echo "Usage: appm remove <name>"
+        return 1
+    fi
+    
+	if [ ! -f /etc/app.d/${NAME}.info ]; then
+		echo "app ${NAME} not found"
+		return 1
+	fi
+	
+	. /etc/app.d/${NAME}.info
+	
+    echo "Remove ${NAME} ..." 
+    	
+    #服务类型
+	if [ "${TYPE}" = "SERVICE" ]; then
+		#停止服务
+		service_control stop ${NAME}
+    
+		#解除服务注册
+		CNT=$(which chkconfig 2>/dev/null | wc -l)
+		if [ $CNT -ne 0 ]; then 
+			#rh 系列的Linux
+			echo "Unregister for RH Linux ..."
+			chkconfig --del ${NAME} 
+		fi
+		CNT=$(which update-rc.d 2>/dev/null | wc -l)
+		if [ $CNT -ne 0 ]; then 
+			#debian 系列的Linux
+			echo "Unregister for Debian Linux ..."
+			update-rc.d ${NAME} remove 
+		fi  
+    fi
+	
+    #删除各文件  
+	echo "Remove files ..." 
+    SERVICE_PREFIX=
+    CNT=$(ls /etc/init.d/S??* 2>/dev/null | wc -l)
+    if [ $CNT -gt 10 ]; then        
+        SERVICE_PREFIX=S91 #buildroot启动脚本为 S**开头
+    fi
+	rm -f /etc/init.d/${SERVICE_PREFIX}${NAME}
+    rm -f /etc/app.d/${NAME}.info
+    rm -rf /usr/local/app/${NAME}
+	
+	echo "OK"
+    return 0
+}
+
+
+#查看单个应用信息
+info(){
+    NAME=$1 
+    if [ ${NAME} = "" ]; then
+        echo "Usage: appm info <name>"
+        return 1
+    fi
+    
+	if [ ! -f /etc/app.d/${NAME}.info ]; then
+		echo "app ${NAME} not found"
+		return 1
+	fi
+	
+	cat /etc/app.d/${NAME}.info
+	return 0
+}
+
+
+#删除应用数据
+clear_data(){
+    NAME=$1 
+    if [ ${NAME} = "" ]; then
+        echo "Usage: appm clear <name>"
+        return 1
+    fi
+	if [ ! -f /etc/app.d/${NAME}.info ]; then
+		echo "app ${NAME} not found"
+		return 1
+	fi	
+	. /etc/app.d/${NAME}.info
+	
+		
+	check_app_running ${NAME}
+	STAT=$?
+	
+	#先停止服务
+	if [ "${TYPE}" = "SERVICE" ]; then
+		if [ ${STAT} -eq 0 ]; then
+			service_control stop ${NAME}
+		fi
+	fi
+	
+	#删除数据文件
+	echo "Clear app ${NAME} data ..."
+	DIR=/usr/local/app_data/${NAME}
+	rm -rf ${DIR}
+	mkdir /usr/local/app_data/${NAME}
+	
+	#再启动服务	
+	if [ "${TYPE}" = "SERVICE" ]; then
+		if [ ${STAT} -eq 0 ]; then
+			service_control start ${NAME}
+		fi
+	fi	
+	
+	echo "OK"
+}
+
+
+
+#列出所有应用
+list(){   
+    if [ ! -d /etc/app.d/ ]; then        
+        return 0
+    fi
+	
+	#显示详细信息
+	if [ "$1" = "-v" ]; then
+		echo -e "NAME\tTYPE\tSTATUS\tVERSION"
+		for LINE in $(ls /etc/app.d/*.info 2>/dev/null)
+		do
+			NAME=$(basename ${LINE} .info)
+			. /etc/app.d/${NAME}.info
+			if [ "${TYPE}" = "" ]; then
+				TYPE="GENERIC"
+			fi
+			check_app_running ${NAME}
+			RET=$?
+			PID=0
+			STATUS="STOPED"
+			if [ $RET -eq 0 ]; then			
+				PID=$(cat /var/run/${NAME}.pid)				
+			fi
+			if [ $PID -ne 0 ]; then
+				STATUS="RUNNING"
+			fi			
+			echo -e "${NAME}\t${TYPE}\t${STATUS}\t${VERSION}"		
+		done
+		return 0
+	fi
+	
+	#值显示名称列表
+	for LINE in $(ls /etc/app.d/*.info 2>/dev/null)
+	do		
+		echo $(basename ${LINE} .info)		
+	done
+}
+
+
+#显示用法
+usage(){
+	echo "Application Manager Tool"
+	echo "Usage:"
+	echo "  appm install <file>     install app by package file "
+	echo "  appm remove <name>      remove app  "
+	echo "  appm start <name>       start app in background "
+	echo "  appm stop <name>        stop background app"
+	echo "  appm status <name>      view background app status"
+	echo "  appm restart <name>     restart background app "
+	echo "  appm run <name>         start app with stdout "
+	echo "  appm clear <name>       clear app data "
+	echo "  appm info <name>        view app info "
+	echo "  appm list [-v]          view app list, -v for detail "
+}
+
+case "$1" in
+  start)
+    service_control start $2
+    ;;
+  stop)
+    service_control stop $2 
+    ;;
+  status)
+    service_control status $2
+    ;;
+  restart)
+    service_control restart $2
+    ;; 
+  run)
+    service_control run $2
+    ;;	
+  install)
+    install $2
+    ;;
+  remove)
+    remove $2
+    ;;
+  clear)
+    clear_data $2
+    ;;	
+  info)
+    info $2
+    ;;
+  list)
+    list $2
+    ;;	
+  *)
+    usage
+    exit 1
+esac

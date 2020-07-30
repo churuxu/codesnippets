@@ -1,0 +1,62 @@
+#!/bin/bash
+
+#监控应用运行
+#如果异常停止则重启
+#如果正常停止则不重启
+
+THISDIR=$(dirname $0)
+APPMEXE=appm
+
+
+#应用是否在运行 (名称)
+check_app_running(){
+	NAME=$1
+	APP_PATH=/usr/local/app/${NAME}
+	PID_FILE=/var/run/${NAME}.pid
+	if [ -f ${PID_FILE} ]; then
+		PID=$(cat ${PID_FILE})
+		if [ -d /proc/${PID} ]; then
+			CNT=$(cat /proc/${PID}/cmdline | grep ${APP_PATH} | wc -l)
+			if [ ! $CNT -eq 0 ]; then				
+				return 0 #在运行
+			fi        
+		fi
+    fi
+	return 1
+}
+
+#单个服务检测 (名称)
+check_one(){
+	NAME=$1
+	PID_FILE=/var/run/${NAME}.pid
+	if [ -f ${PID_FILE} ]; then 
+		#PID文件存在		
+		check_app_running ${NAME}
+		if [ $? -ne 0 ]; then
+			#PID文件存在，并且进程不存在，说明是异常退出，则重启			
+			N=$(date)
+			echo "${N} Restart ${NAME}" >> /var/log/app-watcher.log
+			${APPMEXE} stop ${NAME} # debian系列Linux服务进程崩溃，服务会显示仍在运行中，需要先停止
+			echo 99999 > ${PID_FILE} #停止后PID文件可能不存在了，影响之后的启动
+			${APPMEXE} start ${NAME}
+		fi
+	fi
+}
+
+#检测所有服务
+check_all(){
+	LST=$(${APPMEXE} list)
+	for NAME in ${LST}
+	do
+		check_one ${NAME}
+	done	
+}
+
+#每n秒检测一次，无限循环
+sleep 15
+while true
+do
+	sleep 8
+	check_all
+done
+

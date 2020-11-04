@@ -189,7 +189,11 @@ static int convert_bcd_data(const char* fmt, uint8_t* buf, int buflen, packet_va
     uint8_t data;
     packet_integer_t v = 0;
     for(i=0;i<len;i++){
-        data = buf[i];        
+        if(fmt[0] == 'C'){
+            data = buf[i];
+        }else{
+            data = buf[len - i - 1];
+        }                
         v = v*100 + BCD_TO_HEX[data];
     }
     val->type = PACKET_VALUE_INTEGER;
@@ -247,6 +251,7 @@ static int convert_data(const char* fmt, uint8_t* buf, int buflen, packet_value*
         case 'B':
             return convert_b_data(fmt, buf, buflen, val);
         case 'C':
+        case 'c':
             return convert_bcd_data(fmt, buf, buflen, val);            
         default:
             break;               
@@ -408,6 +413,11 @@ static int write_n_data(const char* fmt, uint8_t* buf, int buflen, packet_value*
     return len-1;       
 }
 
+//写入bcd形式整数
+static int write_bcd_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){
+    return -1;
+}
+
 
 //将值写入到buf, 返回写入的长度
 static int write_data(const char* fmt, uint8_t* buf, int buflen, packet_value* val){
@@ -424,7 +434,10 @@ static int write_data(const char* fmt, uint8_t* buf, int buflen, packet_value* v
         case 'H':
             return write_n_data(fmt, buf, buflen, val);
         case 'B':
-            return write_bin_data(fmt, buf, buflen, val);                                
+            return write_bin_data(fmt, buf, buflen, val); 
+        case 'C':
+        case 'c':
+            return write_bcd_data(fmt, buf, buflen, val);                                             
         default:
             break;               
     }

@@ -128,5 +128,50 @@ TEST(generic_packet, build_binary){
 
 
 
+static int bcd_callback(void* udata, const char* name, packet_value* val){
+    if(strcmp(name,"val") == 0){
+        val->int_val = 1234;
+        val->type = PACKET_VALUE_INTEGER;
+    }
+    return 0;
+}
+
+TEST(generic_packet, build_bcd){
+    uint8_t buf[64];
+    int ret;
+    
+    ret = packet_build("11 $val|C2 $val|c2  $val|c3 22", buf, 64, bcd_callback, NULL);
+
+    EXPECT_EQ(9, ret);
+    EXPECT_EQ(0x11, buf[0]);
+    EXPECT_EQ(0x12, buf[1]);
+    EXPECT_EQ(0x34, buf[2]);
+    EXPECT_EQ(0x34, buf[3]);
+    EXPECT_EQ(0x12, buf[4]);
+    EXPECT_EQ(0x34, buf[5]);
+    EXPECT_EQ(0x12, buf[6]);
+    EXPECT_EQ(0x00, buf[7]);
+    EXPECT_EQ(0x22, buf[8]);
+
+}
+
+TEST(generic_packet, parse_bcd){
+    uint8_t pack[] = {0x11, 0x12, 0x34, 0x34, 0x12, 0x34, 0x12, 0x00, 0x22 };
+    int ret;
+    
+    i_ = 0;
+    ret = packet_parse("B1 $v1|C2 $v2|c2 $v3|c3 B1", pack, sizeof(pack), parser_callback, NULL);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(3, i_); //
+
+    EXPECT_EQ(1234, r_[0].pv.int_val);
+    EXPECT_EQ(1234, r_[1].pv.int_val);
+    EXPECT_EQ(1234, r_[2].pv.int_val);
+}
+
+
+
+
+
 
 
